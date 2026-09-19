@@ -1,0 +1,11 @@
+# GitHub repositories whose latest release is published in this feed.
+#
+# One "owner/repo" per line. build-feed.sh takes the newest non-draft,
+# non-prerelease release of each and collects every .ipk and .apk asset
+# attached to it. Adding a package to the feed is adding a line here.
+#
+# The source repositories need no changes of their own. They do not know
+# this feed exists.
+
+EliotFerragni/luci-app-nlbw-history
+EliotFerragni/luci-app-fw-live

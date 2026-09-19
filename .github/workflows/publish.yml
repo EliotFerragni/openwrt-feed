@@ -1,0 +1,80 @@
+name: publish
+
+# The feed is rebuilt from scratch every time. It is only ever a function of
+# sources.list and whatever the newest release of each listed repository is, so
+# there is nothing to keep between runs.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  # Lets a package repository ask for a rebuild after it publishes a release.
+  # Nothing else notices a new release on its own: there is no schedule, so
+  # without this the feed is rebuilt when you say so.
+  repository_dispatch:
+    types: [refresh]
+
+permissions:
+  contents: read
+
+# Pages allows one deployment at a time, and a half published feed is worse
+# than a stale one, so queue rather than cancel.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: |
+          for f in build-feed.sh tools/*.sh; do
+            sh -n "$f" || exit 1
+          done
+
+  publish:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write signing keys
+        env:
+          FEED_APK_KEY: ${{ secrets.FEED_APK_KEY }}
+          FEED_USIGN_KEY: ${{ secrets.FEED_USIGN_KEY }}
+        run: |
+          # An unset secret would otherwise write an empty key file, which is
+          # readable, so the build would go on and sign nothing with it.
+          [ -n "$FEED_APK_KEY" ] || { echo "secret FEED_APK_KEY is not set" >&2; exit 1; }
+          [ -n "$FEED_USIGN_KEY" ] || { echo "secret FEED_USIGN_KEY is not set" >&2; exit 1; }
+          mkdir -p keys/private
+          chmod 700 keys/private
+          printf '%s\n' "$FEED_APK_KEY" > keys/private/apk.pem
+          printf '%s\n' "$FEED_USIGN_KEY" > keys/private/usign.sec
+          chmod 600 keys/private/apk.pem keys/private/usign.sec
+
+      - name: Build feed
+        env:
+          # Only used to raise the API rate limit while reading the release
+          # of each source repository. Those are public, so no extra scope is
+          # needed, but a private source repository would need a PAT here.
+          GH_TOKEN: ${{ github.token }}
+        run: ./build-feed.sh
+
+      - name: Verify the feed the way a router would
+        run: ./tools/verify-feed.sh
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
