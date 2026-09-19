@@ -147,9 +147,9 @@ build rather than shipping a feed nobody can verify.
 ## Publishing
 
 [The workflow](.github/workflows/publish.yml) rebuilds and deploys on a push to
-`main`, on manual dispatch, and on a `repository_dispatch` of type `refresh`.
-It needs Pages enabled with **GitHub Actions** as the source, under
-Settings → Pages.
+`main` and on dispatch, whether that is you in the Actions tab or a package
+repository after a release. It needs Pages enabled with **GitHub Actions** as
+the source, under Settings → Pages.
 
 There is deliberately no schedule. Nothing here changes unless a package is
 released or `sources.list` is edited, and a nightly rebuild of an unchanged
@@ -169,13 +169,21 @@ release workflow:
     - name: Refresh the package feed
       env:
         GH_TOKEN: ${{ secrets.FEED_DISPATCH_TOKEN }}
-      run: |
-        gh api repos/EliotFerragni/openwrt-feed/dispatches \
-          -f event_type=refresh
+      run: gh workflow run publish.yml --repo EliotFerragni/openwrt-feed
 
-`FEED_DISPATCH_TOKEN` is a fine-grained PAT with **contents: read and write**
-on this repository only. That token is the one piece of coupling between a
-package repository and the feed, which is why it is optional.
+`FEED_DISPATCH_TOKEN` is a fine-grained PAT scoped to this repository only,
+with **Actions: read and write** and nothing else.
+
+It is worth being deliberate about that permission. The obvious way to do this
+is a `repository_dispatch`, but that endpoint requires **Contents: write**, so
+a token sitting in a package repository would also be able to rewrite
+`build-feed.sh` or replace the public key this feed publishes. Dispatching the
+workflow instead needs only **Actions: write**, which can start the workflow
+that is already committed here and cannot change what it runs.
+
+That token is the one piece of coupling between a package repository and the
+feed, which is why it is optional: without it, releases still build and the
+feed is refreshed by hand.
 
 ## What is not tested here
 

@@ -6,12 +6,9 @@ name: publish
 on:
   push:
     branches: [main]
+  # Run by hand from the Actions tab, and by the package repositories after
+  # they publish a release.
   workflow_dispatch:
-  # Lets a package repository ask for a rebuild after it publishes a release.
-  # Nothing else notices a new release on its own: there is no schedule, so
-  # without this the feed is rebuilt when you say so.
-  repository_dispatch:
-    types: [refresh]
 
 permissions:
   contents: read
