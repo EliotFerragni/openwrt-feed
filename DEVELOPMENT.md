@@ -179,12 +179,20 @@ package repository and the feed, which is why it is optional.
 
 ## What is not tested here
 
-Neither index is exercised against a real router in CI. `tools/verify-feed.sh`
-checks the signatures and the checksums with the same tools the router uses
-(`usign` for opkg, `apk verify` for apk), and an `apk add` against a locally
-served copy of `site/` installs the packages with only the public key trusted.
-What that cannot cover is opkg itself, which has no host build here, and LuCI's
-package manager page.
+Nothing is exercised against a real router in CI. `tools/verify-feed.sh` checks
+the signatures and the checksums with the same tools the router uses (`usign`
+for opkg, `apk verify` for apk), and an `apk add` against the published feed
+installs the packages with only the public key trusted, and refuses them
+without it.
+
+The **opkg side is confirmed on real hardware**: the feed was set up on a
+Banana Pi R4 running 24.10 on 2026-09-19 and installs from LuCI as intended.
+
+The **apk side has only ever run in a container**. apk-tools there is Alpine's
+build, not the `-Dminimal=true` one OpenWrt ships, and no 25.12 hardware has
+seen this feed. The index format and the signature are the parts that could
+differ, and both come straight from `include/package-pack.mk` and
+`package/Makefile`.
 
 ## Built with Claude Code
 
