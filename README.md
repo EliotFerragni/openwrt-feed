@@ -71,8 +71,27 @@ published. From a shell:
     apk add luci-app-nlbw-history      # 25.12 and newer
     opkg install luci-app-nlbw-history # 24.10 and older
 
-Both `customfeeds` files are config files, so the feed survives a sysupgrade
-that keeps settings.
+### After a sysupgrade
+
+The packages do not come back. Attended sysupgrade builds its image on
+OpenWrt's build server from OpenWrt's own repositories, which do not carry this
+feed, so anything installed from here is left out; a plain sysupgrade replaces
+the root filesystem and has the same effect. Reinstall them once the router is
+back up:
+
+    apk add luci-app-nlbw-history      # 25.12 and newer
+    opkg install luci-app-nlbw-history # 24.10 and older
+
+The feed URL survives on both versions, since both `customfeeds` files are
+conffiles.
+
+The key survives on 24.10, where `/etc/opkg/keys/` is listed in
+`/lib/upgrade/keep.d/opkg` and everything in it is backed up. It does not
+survive on 25.12, where nothing claims `/etc/apk/keys/`, so the `.pem` is
+dropped and the next `apk update` fails its signature check. Naming it in
+`/etc/sysupgrade.conf` once carries it across:
+
+    echo /etc/apk/keys/openwrt-feed.pem >> /etc/sysupgrade.conf
 
 ## The keys
 
@@ -115,7 +134,8 @@ name does not work. Check that `/etc/opkg/keys/828c916b47eb7bf9` exists.
 
 **`apk update` says "UNTRUSTED signature".** The key is not in
 `/etc/apk/keys/`. Unlike opkg, the filename there does not matter, only that
-the file is in the directory.
+the file is in the directory. A sysupgrade is the usual reason for it to go
+missing; see [After a sysupgrade](#after-a-sysupgrade).
 
 **The package installs but the LuCI page is missing.** Log out of LuCI and back
 in. A stale session hides a freshly installed page.
